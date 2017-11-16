@@ -1,3 +1,8 @@
+# Desc
+这个库可以将，env 中的设定读取到 go struct 当中, 
+核心的点就是反射的使用, 很有参考价值
+
+
 # envdecode #
 
 `envdecode` is a Go package for populating structs from environment

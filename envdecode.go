@@ -131,7 +131,7 @@ func decode(target interface{}, strict bool) (int, error) {
 			setFieldCount += n
 		}
 
-		if !f.CanSet() {
+		if !f.CanSet() { // note:
 			continue
 		}
 
@@ -175,7 +175,7 @@ func decode(target interface{}, strict bool) (int, error) {
 
 		setFieldCount++
 
-		decoder, custom := f.Addr().Interface().(Decoder)
+		decoder, custom := f.Addr().Interface().(Decoder) // target field can be converted to Decoder type
 		if custom {
 			if err := decoder.Decode(env); err != nil {
 				return 0, err
@@ -183,7 +183,7 @@ func decode(target interface{}, strict bool) (int, error) {
 		} else if f.Kind() == reflect.Slice {
 			decodeSlice(&f, env)
 		} else {
-			if err := decodePrimitiveType(&f, env); err != nil && strict {
+			if err := decodePrimitiveType(&f, env); err != nil && strict { // strict would prevent error.
 				return 0, err
 			}
 		}
@@ -207,7 +207,7 @@ func decodeSlice(f *reflect.Value, env string) {
 	if valuesCount > 0 {
 		for i := 0; i < valuesCount; i++ {
 			e := slice.Index(i)
-			decodePrimitiveType(&e, values[i])
+			decodePrimitiveType(&e, values[i]) // slice type only support primitive type
 		}
 	}
 
@@ -232,7 +232,7 @@ func decodePrimitiveType(f *reflect.Value, env string) error {
 		f.SetFloat(v)
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if t := f.Type(); t.PkgPath() == "time" && t.Name() == "Duration" {
+		if t := f.Type(); t.PkgPath() == "time" && t.Name() == "Duration" { // .Type() return the actual go Type, Type is more inclusive than .Kind(), Type是比Kind更包容的类型，Kind只包括go最核心的类型
 			v, err := time.ParseDuration(env)
 			if err != nil {
 				return err
@@ -299,6 +299,7 @@ type ConfigInfo struct {
 	UsesEnv      bool
 }
 
+// to leverage sort.Sort, Less, Len, Swap has to be implemented
 type ConfigInfoSlice []*ConfigInfo
 
 func (c ConfigInfoSlice) Less(i, j int) bool {
@@ -320,12 +321,12 @@ func Export(target interface{}) ([]*ConfigInfo, error) {
 
 	cfg := []*ConfigInfo{}
 
-	s = s.Elem()
+	s = s.Elem() // get the instance behinde pointer
 	if s.Kind() != reflect.Struct {
 		return nil, ErrInvalidTarget
 	}
 
-	t := s.Type()
+	t := s.Type() // get pointer type, namely the struct
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 		fName := t.Field(i).Name
@@ -334,8 +335,8 @@ func Export(target interface{}) ([]*ConfigInfo, error) {
 		if f.Kind() == reflect.Ptr {
 			fElem = f.Elem()
 		}
-		if fElem.Kind() == reflect.Struct {
-			ss := fElem.Addr().Interface()
+		if fElem.Kind() == reflect.Struct { // recursively
+			ss := fElem.Addr().Interface() // get object address
 			subCfg, err := Export(ss)
 			if err != ErrInvalidTarget {
 				f = fElem
@@ -359,7 +360,7 @@ func Export(target interface{}) ([]*ConfigInfo, error) {
 			UsesEnv: os.Getenv(parts[0]) != "",
 		}
 
-		for _, o := range parts[1:] {
+		for _, o := range parts[1:] { // setting default & required flag
 			if strings.HasPrefix(o, "default=") {
 				ci.HasDefault = true
 				ci.DefaultValue = o[8:]
@@ -379,7 +380,7 @@ func Export(target interface{}) ([]*ConfigInfo, error) {
 
 			case reflect.Float32, reflect.Float64:
 				bits := f.Type().Bits()
-				ci.Value = strconv.FormatFloat(f.Float(), 'f', -1, bits)
+				ci.Value = strconv.FormatFloat(f.Float(), 'f', -1, bits) // :!note, covert float to string
 
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 				ci.Value = strconv.FormatInt(f.Int(), 10)
